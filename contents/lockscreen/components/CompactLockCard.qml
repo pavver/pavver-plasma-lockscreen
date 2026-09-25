@@ -15,11 +15,16 @@ Item {
     property string userImage: typeof kscreenlocker_userImage !== "undefined" ? kscreenlocker_userImage : ""
 
     readonly property string effectiveUserImage: {
+        var path = "";
         if (root.userImage && root.userImage.length > 0) {
-            return root.userImage;
+            path = root.userImage;
+        } else if (root.userName && root.userName.length > 0) {
+            path = "/var/lib/AccountsService/icons/" + root.userName;
         }
-        var accountPath = "/var/lib/AccountsService/icons/" + root.userName;
-        return "file://" + accountPath;
+        if (path.length > 0 && path.indexOf("://") === -1) {
+            return "file://" + path.split("/").map(encodeURIComponent).join("/");
+        }
+        return path;
     }
 
     // Context objects
