@@ -194,7 +194,13 @@ Item {
         hoverEnabled: true
         cursorShape: lockScreenUi.isScreensaverMode ? Qt.BlankCursor : Qt.ArrowCursor
 
-        Component.onCompleted: forceActiveFocus()
+        Component.onCompleted: {
+            Qt.callLater(function() {
+                if (lockScreenUi.isScreensaverMode) {
+                    interactionRoot.forceActiveFocus();
+                }
+            });
+        }
 
         onPressed: function(mouse) {
             if (!lockScreenUi.ignoreWakeup) lockScreenUi.wakeUp();
@@ -204,8 +210,12 @@ Item {
         }
 
         Keys.onPressed: function(event) {
-            if (!lockScreenUi.ignoreWakeup) {
+            if (lockScreenUi.ignoreWakeup) {
+                event.accepted = true;
+            } else if (lockScreenUi.isScreensaverMode) {
                 lockScreenUi.wakeUp();
+                event.accepted = true;
+            } else {
                 event.accepted = false;
             }
         }
@@ -283,6 +293,10 @@ Item {
                     }
 
                     onUnlockRequested: function(password) {
+                        if (lockScreenUi.isScreensaverMode) {
+                            lockScreenUi.wakeUp();
+                            return;
+                        }
                         if (graceLockTimer.running) {
                             return;
                         }
@@ -418,7 +432,9 @@ Item {
         }
 
         function onPromptForSecretChanged(msg) {
-            compactLockCard.focusPassword();
+            if (!lockScreenUi.isScreensaverMode) {
+                compactLockCard.focusPassword();
+            }
         }
     }
 }

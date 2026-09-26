@@ -7,8 +7,10 @@ set -euo pipefail
 
 THEME_ID="pavver-plasma-lockscreen"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-USER_TARGET_DIR="${HOME}/.local/share/plasma/look-and-feel/${THEME_ID}"
-SYSTEM_TARGET_DIR="/usr/share/plasma/look-and-feel/${THEME_ID}"
+USER_TARGET_DIR="${HOME}/.local/share/plasma/shells/${THEME_ID}"
+SYSTEM_TARGET_DIR="/usr/share/plasma/shells/${THEME_ID}"
+USER_LEGACY_DIR="${HOME}/.local/share/plasma/look-and-feel/${THEME_ID}"
+SYSTEM_LEGACY_DIR="/usr/share/plasma/look-and-feel/${THEME_ID}"
 
 echo "======================================================="
 echo "   Встановлення теми блокування Plasma: ${THEME_ID}"
@@ -16,9 +18,11 @@ echo "======================================================="
 
 if [ "${EUID}" -eq 0 ]; then
     TARGET_DIR="${SYSTEM_TARGET_DIR}"
+    LEGACY_DIR="${SYSTEM_LEGACY_DIR}"
     echo "(!) Встановлення у загальносистемний каталог: ${TARGET_DIR}"
 else
     TARGET_DIR="${USER_TARGET_DIR}"
+    LEGACY_DIR="${USER_LEGACY_DIR}"
     echo "(!) Встановлення у каталог поточного користувача: ${TARGET_DIR}"
 fi
 
@@ -62,14 +66,25 @@ else
 fi
 trap - EXIT
 
-echo "[3/3] Активація теми в налаштуваннях екрана блокування Plasma..."
+echo "[3/3] Активація shell-пакета та очищення старої інсталяції..."
 THEME_ACTIVATED=false
 if command -v kwriteconfig6 >/dev/null 2>&1; then
-    kwriteconfig6 --file kscreenlockerrc --group Greeter --key Theme "${THEME_ID}"
-    echo "      Оновлено kscreenlockerrc -> Theme=${THEME_ID}"
+    kwriteconfig6 --file plasmashellrc --group Shell --key ShellPackage "${THEME_ID}" --notify
+    echo "      Оновлено plasmashellrc -> ShellPackage=${THEME_ID}"
+
+    if command -v kreadconfig6 >/dev/null 2>&1 && \
+       [ "$(kreadconfig6 --file kscreenlockerrc --group Greeter --key Theme)" = "${THEME_ID}" ]; then
+        kwriteconfig6 --file kscreenlockerrc --group Greeter --key Theme --delete
+        echo "      Видалено застарілий ключ kscreenlockerrc -> Theme"
+    fi
     THEME_ACTIVATED=true
 else
     echo "      Увага: kwriteconfig6 не знайдено, тему встановлено, але не активовано."
+fi
+
+if [ "${LEGACY_DIR}" != "${TARGET_DIR}" ] && { [ -e "${LEGACY_DIR}" ] || [ -L "${LEGACY_DIR}" ]; }; then
+    rm -rf -- "${LEGACY_DIR}"
+    echo "      Видалено старий пакет: ${LEGACY_DIR}"
 fi
 
 echo "======================================================="
@@ -79,5 +94,5 @@ else
     echo "Тему блокування успішно встановлено. Активуйте її в налаштуваннях Plasma."
 fi
 echo "Для перевірки запустіть у терміналі:"
-echo "/usr/lib/kscreenlocker_greet --testing"
+echo "/usr/lib/kscreenlocker_greet --testing --shell ${THEME_ID}"
 echo "======================================================="

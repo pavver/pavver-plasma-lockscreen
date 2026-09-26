@@ -750,7 +750,7 @@ Item {
                 font.pixelSize: 18
                 echoMode: TextInput.Password
                 clip: true
-                focus: true
+                focus: false
                 enabled: !root.authenticationBlocked
 
                 Behavior on anchors.leftMargin { NumberAnimation { duration: 150 } }
