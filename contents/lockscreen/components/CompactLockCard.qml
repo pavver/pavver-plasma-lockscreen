@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import Qt5Compat.GraphicalEffects
 import org.kde.kirigami 2.20 as Kirigami
+import org.kde.plasma.workspace.components as PW
 import org.kde.plasma.private.keyboardindicator as KeyboardIndicator
 
 Item {
@@ -39,6 +40,10 @@ Item {
         passwordInput.forceActiveFocus();
     }
 
+    function clearPassword() {
+        passwordInput.text = "";
+    }
+
     readonly property bool isTyping: passwordInput.text.length > 0
 
     // Caps Lock state detection
@@ -57,26 +62,28 @@ Item {
 
     readonly property string mainFontFamily: cascadiaFont.status === FontLoader.Ready ? cascadiaFont.name : "Cascadia Code"
 
-    // Keyboard layouts handling
-    readonly property var availableLayouts: {
-        if (typeof keyboard !== "undefined" && keyboard && keyboard.layouts && keyboard.layouts.length > 0) {
-            return keyboard.layouts;
-        }
-        return [
-            { shortName: "us", longName: "English (US)" },
-            { shortName: "ua", longName: "Українська" }
-        ];
+    // Real Plasma 6 Keyboard Layout Switcher
+    PW.KeyboardLayoutSwitcher {
+        id: plasmaKeyboardLayoutSwitcher
+        acceptedButtons: Qt.NoButton
     }
+
+    readonly property bool hasRealLayoutSwitcher: typeof plasmaKeyboardLayoutSwitcher !== "undefined" && plasmaKeyboardLayoutSwitcher && typeof plasmaKeyboardLayoutSwitcher.layoutNames !== "undefined" && plasmaKeyboardLayoutSwitcher.layoutNames !== null
+    readonly property bool hasMultipleKeyboardLayouts: hasRealLayoutSwitcher ? plasmaKeyboardLayoutSwitcher.hasMultipleKeyboardLayouts : true
+
+    // Fallback mock layouts for standalone testing
+    readonly property var availableLayouts: [
+        { shortName: "us", longName: "English (US)" },
+        { shortName: "ua", longName: "Українська" }
+    ]
 
     property int mockLayoutIndex: 0
-    readonly property int activeLayoutIndex: {
-        if (typeof keyboard !== "undefined" && keyboard && typeof keyboard.currentLayout === "number") {
-            return keyboard.currentLayout;
-        }
-        return mockLayoutIndex;
-    }
+    readonly property int activeLayoutIndex: mockLayoutIndex
 
     readonly property string currentLayoutShortName: {
+        if (hasRealLayoutSwitcher && plasmaKeyboardLayoutSwitcher.layoutNames && plasmaKeyboardLayoutSwitcher.layoutNames.shortName) {
+            return plasmaKeyboardLayoutSwitcher.layoutNames.shortName.toUpperCase();
+        }
         if (availableLayouts.length > activeLayoutIndex && activeLayoutIndex >= 0) {
             var l = availableLayouts[activeLayoutIndex];
             if (l && l.shortName) return l.shortName.toUpperCase();
@@ -85,6 +92,9 @@ Item {
     }
 
     readonly property string currentLayoutFullName: {
+        if (hasRealLayoutSwitcher && plasmaKeyboardLayoutSwitcher.layoutNames && plasmaKeyboardLayoutSwitcher.layoutNames.longName) {
+            return "Розкладка: " + plasmaKeyboardLayoutSwitcher.layoutNames.longName;
+        }
         if (availableLayouts.length > activeLayoutIndex && activeLayoutIndex >= 0) {
             var l = availableLayouts[activeLayoutIndex];
             if (l && l.longName) return "Розкладка: " + l.longName;
@@ -93,12 +103,31 @@ Item {
     }
 
     function nextKeyboardLayout() {
+        if (hasRealLayoutSwitcher && plasmaKeyboardLayoutSwitcher.keyboardLayout && typeof plasmaKeyboardLayoutSwitcher.keyboardLayout.switchToNextLayout === "function") {
+            plasmaKeyboardLayoutSwitcher.keyboardLayout.switchToNextLayout();
+            return;
+        }
         if (availableLayouts.length <= 1) return;
         var nextIdx = (activeLayoutIndex + 1) % availableLayouts.length;
-        if (typeof keyboard !== "undefined" && keyboard && typeof keyboard.currentLayout === "number") {
-            keyboard.currentLayout = nextIdx;
-        }
         mockLayoutIndex = nextIdx;
+    }
+
+    // PAM Status Message & Custom Prompt
+    property string statusMessage: ""
+    property string statusType: "info" // "info", "error", "success"
+    property string customPromptText: ""
+
+    function setPrompt(text) {
+        if (text && text.trim().length > 0) {
+            root.customPromptText = text.trim();
+        } else {
+            root.customPromptText = "";
+        }
+    }
+
+    function showStatusMessage(msg, type) {
+        root.statusMessage = msg ? msg : "";
+        root.statusType = type ? type : "info";
     }
 
     // Feedback States (SDDM Design System)
@@ -318,13 +347,7 @@ Item {
                     color: kbMouse.containsMouse ? "#152535" : "#282828"
                     border.color: kbMouse.containsMouse ? "#00d2ff" : "#3c3c3c"
                     border.width: 1.5
-                    visible: {
-                        if (typeof keyboard !== "undefined" && keyboard && keyboard.layouts) {
-                            if (keyboard.layouts.length > 1) return true;
-                            if (keyboard.layouts.length === 1) return false;
-                        }
-                        return true;
-                    }
+                    visible: root.hasMultipleKeyboardLayouts
 
                     Behavior on color { ColorAnimation { duration: 150 } }
                     Behavior on border.color { ColorAnimation { duration: 150 } }
@@ -465,6 +488,25 @@ Item {
             }
         }
 
+        // Status & PAM Notification Banner
+        Text {
+            id: statusText
+            anchors.bottom: passwordBox.top
+            anchors.bottomMargin: 2
+            anchors.left: passwordBox.left
+            anchors.right: passwordBox.right
+            height: 16
+            visible: root.statusMessage.length > 0
+            text: root.statusMessage
+            color: root.statusType === "error" ? "#ff4d6d" : (root.statusType === "success" ? "#00e676" : "#00d2ff")
+            font.family: root.mainFontFamily
+            font.pixelSize: 11
+            font.bold: true
+            elide: Text.ElideRight
+            horizontalAlignment: Text.AlignLeft
+            verticalAlignment: Text.AlignVCenter
+        }
+
         // Password Input Container (matching SDDM passInputBox)
         Rectangle {
             id: passwordBox
@@ -575,12 +617,13 @@ Item {
 
                 Text {
                     anchors.fill: parent
-                    text: "Введіть пароль..."
+                    text: root.customPromptText.length > 0 ? root.customPromptText : "Введіть пароль..."
                     color: "#555566"
                     font.family: root.mainFontFamily
                     font.pixelSize: 17
                     visible: passwordInput.text.length === 0 && !passwordInput.inputMethodComposing
                     verticalAlignment: Text.AlignVCenter
+                    elide: Text.ElideRight
                 }
 
                 onAccepted: {

@@ -31,11 +31,10 @@ cp -rf "${SCRIPT_DIR}/contents" "${TARGET_DIR}/"
 echo "[2/3] Встановлення прав доступу..."
 chmod -R 755 "${TARGET_DIR}"
 
-echo "[3/3] Активація теми в налаштуваннях Plasma..."
+echo "[3/3] Активація теми в налаштуваннях екрана блокування Plasma..."
 if command -v kwriteconfig6 >/dev/null 2>&1; then
-    kwriteconfig6 --file kdeglobals --group KDE --key LookAndFeelPackage "${THEME_ID}"
     kwriteconfig6 --file kscreenlockerrc --group Greeter --key Theme "${THEME_ID}"
-    echo "      Оновлено kdeglobals та kscreenlockerrc -> Theme=${THEME_ID}"
+    echo "      Оновлено kscreenlockerrc -> Theme=${THEME_ID}"
 fi
 
 echo "======================================================="

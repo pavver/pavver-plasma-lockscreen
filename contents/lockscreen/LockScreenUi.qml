@@ -36,6 +36,9 @@ Item {
         Qt.callLater(function() {
             lockScreenUi.animationsEnabled = true;
         });
+        if (typeof authenticator !== "undefined" && authenticator && typeof authenticator.startAuthenticating === "function") {
+            authenticator.startAuthenticating();
+        }
     }
 
     Timer {
@@ -190,6 +193,14 @@ Item {
             }
         }
 
+        Keys.onEscapePressed: function(event) {
+            if (!lockScreenUi.isScreensaverMode) {
+                lockScreenUi.isScreensaverMode = true;
+                compactLockCard.clearPassword();
+                event.accepted = true;
+            }
+        }
+
         // =====================================================================
         // Bottom Row: Clock + CompactLockCard (Unified Centered Row)
         // =====================================================================
@@ -261,6 +272,14 @@ Item {
         id: sessionManagement
     }
 
+    Connections {
+        target: sessionManagement
+        ignoreUnknownSignals: true
+        function onAboutToSuspend() {
+            compactLockCard.clearPassword();
+        }
+    }
+
     Timer {
         id: unlockTimer
         interval: 500
@@ -270,20 +289,76 @@ Item {
         }
     }
 
+    Timer {
+        id: graceLockTimer
+        interval: 2000
+        repeat: false
+        onTriggered: {
+            compactLockCard.clearPassword();
+            if (typeof authenticator !== "undefined" && authenticator && typeof authenticator.startAuthenticating === "function") {
+                authenticator.startAuthenticating();
+            }
+            compactLockCard.focusPassword();
+        }
+    }
+
+    Timer {
+        id: statusMessageClearTimer
+        interval: 4000
+        repeat: false
+        onTriggered: {
+            compactLockCard.showStatusMessage("", "info");
+        }
+    }
+
     Connections {
         target: typeof authenticator !== "undefined" ? authenticator : null
         ignoreUnknownSignals: true
 
         function onFailed(kind) {
+            // If this is from non-interactive authenticators (e.g. fingerprint failure while user is typing password), ignore
+            if (typeof kind !== "undefined" && kind !== 0) {
+                return;
+            }
             compactLockCard.onUnlockFailed();
+            compactLockCard.showStatusMessage("Невірний пароль", "error");
+            statusMessageClearTimer.restart();
+            graceLockTimer.restart();
         }
 
         function onSucceeded() {
-            compactLockCard.onUnlockSucceeded();
-            unlockTimer.start();
+            if (typeof authenticator !== "undefined" && authenticator && !authenticator.hadPrompt) {
+                Qt.quit();
+            } else {
+                compactLockCard.onUnlockSucceeded();
+                unlockTimer.start();
+            }
         }
 
-        function onPromptForSecretChanged() {
+        function onInfoMessageChanged() {
+            if (typeof authenticator !== "undefined" && authenticator && authenticator.infoMessage) {
+                compactLockCard.showStatusMessage(authenticator.infoMessage, "info");
+                statusMessageClearTimer.restart();
+            }
+        }
+
+        function onErrorMessageChanged() {
+            if (typeof authenticator !== "undefined" && authenticator && authenticator.errorMessage) {
+                compactLockCard.showStatusMessage(authenticator.errorMessage, "error");
+                statusMessageClearTimer.restart();
+            }
+        }
+
+        function onPromptChanged(msg) {
+            if (typeof authenticator !== "undefined" && authenticator && authenticator.prompt) {
+                compactLockCard.setPrompt(authenticator.prompt);
+            }
+        }
+
+        function onPromptForSecretChanged(msg) {
+            if (typeof authenticator !== "undefined" && authenticator && authenticator.promptForSecret) {
+                compactLockCard.setPrompt(authenticator.promptForSecret);
+            }
             compactLockCard.focusPassword();
         }
     }
