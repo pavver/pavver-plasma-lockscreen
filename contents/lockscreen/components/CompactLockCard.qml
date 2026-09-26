@@ -294,15 +294,17 @@ Item {
         }
     }
 
-    // Right Content Area (124px height, matching avatar)
+    // Right Content Area
     Item {
         id: rightContent
         anchors.left: avatarContainer.right
         anchors.leftMargin: 24
         anchors.right: parent.right
         anchors.rightMargin: 24
-        anchors.verticalCenter: parent.verticalCenter
-        height: 124
+        anchors.top: parent.top
+        anchors.topMargin: 16
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 18
 
         // Top Row: Username and Power buttons
         Item {
@@ -492,7 +494,7 @@ Item {
         Row {
             id: statusRow
             anchors.bottom: passwordBox.top
-            anchors.bottomMargin: 4
+            anchors.bottomMargin: 6
             anchors.left: passwordBox.left
             anchors.right: passwordBox.right
             height: 18
