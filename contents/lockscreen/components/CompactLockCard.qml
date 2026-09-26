@@ -492,11 +492,11 @@ Item {
         Row {
             id: statusRow
             anchors.bottom: passwordBox.top
-            anchors.bottomMargin: 3
+            anchors.bottomMargin: 4
             anchors.left: passwordBox.left
             anchors.right: passwordBox.right
-            height: 16
-            spacing: 6
+            height: 18
+            spacing: 8
             visible: root.statusMessage.length > 0
             opacity: root.statusMessage.length > 0 ? 1.0 : 0.0
 
@@ -505,9 +505,9 @@ Item {
             }
 
             Rectangle {
-                width: 6
-                height: 6
-                radius: 3
+                width: 7
+                height: 7
+                radius: 3.5
                 anchors.verticalCenter: parent.verticalCenter
                 color: root.statusType === "error" ? "#ff4d6d" : (root.statusType === "success" ? "#00e676" : "#00d2ff")
             }
@@ -515,11 +515,11 @@ Item {
             Text {
                 id: statusText
                 anchors.verticalCenter: parent.verticalCenter
-                width: parent.width - 12
+                width: parent.width - 15
                 text: root.statusMessage
                 color: root.statusType === "error" ? "#ff4d6d" : (root.statusType === "success" ? "#00e676" : "#00d2ff")
                 font.family: root.mainFontFamily
-                font.pixelSize: 11
+                font.pixelSize: 14
                 font.bold: true
                 elide: Text.ElideRight
                 verticalAlignment: Text.AlignVCenter
