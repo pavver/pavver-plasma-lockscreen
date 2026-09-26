@@ -63,13 +63,21 @@ fi
 trap - EXIT
 
 echo "[3/3] Активація теми в налаштуваннях екрана блокування Plasma..."
+THEME_ACTIVATED=false
 if command -v kwriteconfig6 >/dev/null 2>&1; then
     kwriteconfig6 --file kscreenlockerrc --group Greeter --key Theme "${THEME_ID}"
     echo "      Оновлено kscreenlockerrc -> Theme=${THEME_ID}"
+    THEME_ACTIVATED=true
+else
+    echo "      Увага: kwriteconfig6 не знайдено, тему встановлено, але не активовано."
 fi
 
 echo "======================================================="
-echo "Тему блокування успішно встановлено та активовано!"
+if [ "${THEME_ACTIVATED}" = true ]; then
+    echo "Тему блокування успішно встановлено та активовано!"
+else
+    echo "Тему блокування успішно встановлено. Активуйте її в налаштуваннях Plasma."
+fi
 echo "Для перевірки запустіть у терміналі:"
 echo "/usr/lib/kscreenlocker_greet --testing"
 echo "======================================================="

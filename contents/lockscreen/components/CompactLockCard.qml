@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 import Qt5Compat.GraphicalEffects
-import org.kde.kirigami 2.20 as Kirigami
 import org.kde.plasma.workspace.components as PW
 import org.kde.plasma.private.keyboardindicator as KeyboardIndicator
 
@@ -30,12 +29,15 @@ Item {
 
     // Context objects
     property var sessionManagement: null
-    property var authenticator: null
     property bool passwordlessMode: false
+    property bool authenticationBlocked: false
+    property bool virtualKeyboardActive: false
+    property alias passwordField: passwordInput
 
     // Signals
     signal unlockRequested(string password)
     signal passwordlessUnlockRequested()
+    signal virtualKeyboardRequested()
 
     // Helper functions
     function focusPassword() {
@@ -48,6 +50,13 @@ Item {
 
     function clearPassword() {
         passwordInput.text = "";
+        passwordInput.echoMode = TextInput.Password;
+    }
+
+    function submitPassword() {
+        if (!root.authenticationBlocked && passwordInput.text.length > 0) {
+            root.unlockRequested(passwordInput.text);
+        }
     }
 
     readonly property bool isTyping: !root.passwordlessMode && passwordInput.text.length > 0
@@ -282,11 +291,14 @@ Item {
             visible: avatarImg.status === Image.Ready
         }
 
-        Kirigami.Icon {
+        Image {
             anchors.centerIn: parent
             width: 60
             height: 60
-            source: "user-identity"
+            source: Qt.resolvedUrl("../assets/user_identity.svg")
+            sourceSize: Qt.size(120, 120)
+            smooth: true
+            mipmap: true
             visible: avatarImg.status !== Image.Ready
         }
 
@@ -322,12 +334,15 @@ Item {
             // User name
             Item {
                 anchors.left: parent.left
+                anchors.right: actionButtonsRow.left
+                anchors.rightMargin: 12
                 anchors.verticalCenter: parent.verticalCenter
-                width: userNameText.implicitWidth
                 height: userNameText.implicitHeight
 
                 Text {
                     id: userNameText
+                    anchors.left: parent.left
+                    anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     text: root.userRealName && root.userRealName.length > 0 ? root.userRealName : root.userName
                     color: "#ffffff"
@@ -383,6 +398,45 @@ Item {
 
                     ToolTip.visible: kbMouse.containsMouse
                     ToolTip.text: root.currentLayoutFullName
+                    ToolTip.delay: 350
+                }
+
+                // Virtual keyboard remains available even with a single layout.
+                Rectangle {
+                    id: virtualKeyboardBtn
+                    width: 48
+                    height: 48
+                    radius: 24
+                    visible: !root.passwordlessMode
+                    color: virtualKeyboardMouse.containsMouse || root.virtualKeyboardActive ? "#152535" : "#282828"
+                    border.color: virtualKeyboardMouse.containsMouse || root.virtualKeyboardActive ? "#00d2ff" : "#3c3c3c"
+                    border.width: 1.5
+
+                    Behavior on color { ColorAnimation { duration: 150 } }
+                    Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                    Image {
+                        anchors.centerIn: parent
+                        width: 28
+                        height: 28
+                        source: virtualKeyboardMouse.containsMouse || root.virtualKeyboardActive
+                            ? Qt.resolvedUrl("../assets/virtual_keyboard_hover.svg")
+                            : Qt.resolvedUrl("../assets/virtual_keyboard_normal.svg")
+                        sourceSize: Qt.size(112, 112)
+                        smooth: true
+                        mipmap: true
+                    }
+
+                    MouseArea {
+                        id: virtualKeyboardMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.virtualKeyboardRequested()
+                    }
+
+                    ToolTip.visible: virtualKeyboardMouse.containsMouse
+                    ToolTip.text: root.virtualKeyboardActive ? "Сховати віртуальну клавіатуру" : "Віртуальна клавіатура"
                     ToolTip.delay: 350
                 }
 
@@ -558,11 +612,13 @@ Item {
                 anchors.centerIn: parent
                 spacing: 10
 
-                Kirigami.Icon {
+                Image {
                     width: 24
                     height: 24
-                    source: "unlock"
-                    color: "#00d2ff"
+                    source: Qt.resolvedUrl("../assets/unlock.svg")
+                    sourceSize: Qt.size(96, 96)
+                    smooth: true
+                    mipmap: true
                     anchors.verticalCenter: parent.verticalCenter
                 }
 
@@ -695,6 +751,7 @@ Item {
                 echoMode: TextInput.Password
                 clip: true
                 focus: true
+                enabled: !root.authenticationBlocked
 
                 Behavior on anchors.leftMargin { NumberAnimation { duration: 150 } }
 
@@ -710,9 +767,7 @@ Item {
                 }
 
                 onAccepted: {
-                    if (passwordInput.text.length > 0) {
-                        root.unlockRequested(passwordInput.text);
-                    }
+                    root.submitPassword();
                 }
             }
 
@@ -799,11 +854,8 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: passwordInput.text.length > 0 ? Qt.PointingHandCursor : Qt.ArrowCursor
-                    onClicked: {
-                        if (passwordInput.text.length > 0) {
-                            root.unlockRequested(passwordInput.text);
-                        }
-                    }
+                    enabled: !root.authenticationBlocked
+                    onClicked: root.submitPassword()
                 }
             }
         }

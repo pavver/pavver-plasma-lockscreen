@@ -9,14 +9,13 @@ Window {
     minimumWidth: 640
     minimumHeight: 480
     visible: true
-    flags: Qt.Window | Qt.WindowStaysOnTopHint
+    flags: Qt.Window
 
     Component.onCompleted: requestActivate()
     color: "#1a1a1a"
-    title: "Pavver Lock Screen - Passwordless Preview"
+    title: "Pavver Lock Screen Preview"
 
     Theme.LockScreenUi {
         anchors.fill: parent
-        demoPasswordlessMode: true
     }
 }

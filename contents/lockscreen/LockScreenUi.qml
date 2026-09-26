@@ -1,9 +1,6 @@
 import QtQuick
-import QtQuick.Controls
-import Qt5Compat.GraphicalEffects
 import org.kde.kirigami 2.20 as Kirigami
 import org.kde.plasma.private.sessions
-import org.kde.plasma.private.keyboardindicator as KeyboardIndicator
 
 import "components"
 
@@ -32,7 +29,8 @@ Item {
     property bool animationsEnabled: false
     property bool ignoreWakeup: true
     readonly property bool standaloneDemo: typeof authenticator === "undefined"
-    property bool passwordlessConfirmationVisible: standaloneDemo
+    property bool demoPasswordlessMode: false
+    property bool passwordlessConfirmationVisible: standaloneDemo && demoPasswordlessMode
     readonly property var effectiveSessionManagement: standaloneDemo ? demoSessionManagement : sessionManagement
 
     Component.onCompleted: {
@@ -83,11 +81,13 @@ Item {
         id: idleScreensaverTimer
         interval: 20000 // 20 seconds of idle returns to screensaver
         repeat: false
-        running: !lockScreenUi.standaloneDemo && !lockScreenUi.isScreensaverMode && !compactLockCard.isTyping
+        running: !lockScreenUi.standaloneDemo && !lockScreenUi.isScreensaverMode && !compactLockCard.isTyping && !virtualKeyboard.keyboardActive
         onTriggered: {
+            virtualKeyboard.hide();
             lockScreenUi.isScreensaverMode = true;
             lockScreenUi.ignoreWakeup = true;
             screensaverCooldownTimer.restart();
+            interactionRoot.forceActiveFocus();
         }
     }
 
@@ -190,8 +190,11 @@ Item {
     MouseArea {
         id: interactionRoot
         anchors.fill: parent
+        focus: true
         hoverEnabled: true
         cursorShape: lockScreenUi.isScreensaverMode ? Qt.BlankCursor : Qt.ArrowCursor
+
+        Component.onCompleted: forceActiveFocus()
 
         onPressed: function(mouse) {
             if (!lockScreenUi.ignoreWakeup) lockScreenUi.wakeUp();
@@ -209,8 +212,10 @@ Item {
 
         Keys.onEscapePressed: function(event) {
             if (!lockScreenUi.isScreensaverMode) {
+                virtualKeyboard.hide();
                 lockScreenUi.isScreensaverMode = true;
                 compactLockCard.clearPassword();
+                interactionRoot.forceActiveFocus();
                 event.accepted = true;
             }
         }
@@ -259,8 +264,14 @@ Item {
                     scale: lockScreenUi.cardScale
 
                     sessionManagement: lockScreenUi.effectiveSessionManagement
-                    authenticator: typeof authenticator !== "undefined" ? authenticator : null
                     passwordlessMode: lockScreenUi.passwordlessConfirmationVisible
+                    authenticationBlocked: graceLockTimer.running
+                    virtualKeyboardActive: virtualKeyboard.keyboardActive
+
+                    onVirtualKeyboardRequested: {
+                        compactLockCard.focusPassword();
+                        virtualKeyboard.showHide();
+                    }
 
                     onPasswordlessUnlockRequested: {
                         if (lockScreenUi.standaloneDemo) {
@@ -272,12 +283,18 @@ Item {
                     }
 
                     onUnlockRequested: function(password) {
+                        if (graceLockTimer.running) {
+                            return;
+                        }
                         if (typeof authenticator !== "undefined" && authenticator && typeof authenticator.respond === "function") {
                             authenticator.respond(password);
                         } else {
                             // Fallback simulation mode
                             if (password === "error") {
                                 compactLockCard.onUnlockFailed();
+                                compactLockCard.showStatusMessage("Невірний пароль", "error");
+                                statusMessageClearTimer.restart();
+                                graceLockTimer.restart();
                             } else {
                                 compactLockCard.onUnlockSucceeded();
                                 unlockTimer.start();
@@ -287,6 +304,13 @@ Item {
                 }
             }
         }
+    }
+
+    VirtualKeyboard {
+        id: virtualKeyboard
+        z: 10
+        passwordField: compactLockCard.passwordField
+        onEnterPressed: compactLockCard.submitPassword()
     }
 
     // =========================================================================
