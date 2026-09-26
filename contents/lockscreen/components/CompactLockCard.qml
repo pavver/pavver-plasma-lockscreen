@@ -259,7 +259,7 @@ Item {
             smooth: true
             mipmap: true
             visible: false
-            asynchronous: true
+            asynchronous: false
         }
 
         Rectangle {
@@ -489,22 +489,41 @@ Item {
         }
 
         // Status & PAM Notification Banner
-        Text {
-            id: statusText
+        Row {
+            id: statusRow
             anchors.bottom: passwordBox.top
-            anchors.bottomMargin: 2
+            anchors.bottomMargin: 3
             anchors.left: passwordBox.left
             anchors.right: passwordBox.right
             height: 16
+            spacing: 6
             visible: root.statusMessage.length > 0
-            text: root.statusMessage
-            color: root.statusType === "error" ? "#ff4d6d" : (root.statusType === "success" ? "#00e676" : "#00d2ff")
-            font.family: root.mainFontFamily
-            font.pixelSize: 11
-            font.bold: true
-            elide: Text.ElideRight
-            horizontalAlignment: Text.AlignLeft
-            verticalAlignment: Text.AlignVCenter
+            opacity: root.statusMessage.length > 0 ? 1.0 : 0.0
+
+            Behavior on opacity {
+                NumberAnimation { duration: 150 }
+            }
+
+            Rectangle {
+                width: 6
+                height: 6
+                radius: 3
+                anchors.verticalCenter: parent.verticalCenter
+                color: root.statusType === "error" ? "#ff4d6d" : (root.statusType === "success" ? "#00e676" : "#00d2ff")
+            }
+
+            Text {
+                id: statusText
+                anchors.verticalCenter: parent.verticalCenter
+                width: parent.width - 12
+                text: root.statusMessage
+                color: root.statusType === "error" ? "#ff4d6d" : (root.statusType === "success" ? "#00e676" : "#00d2ff")
+                font.family: root.mainFontFamily
+                font.pixelSize: 11
+                font.bold: true
+                elide: Text.ElideRight
+                verticalAlignment: Text.AlignVCenter
+            }
         }
 
         // Password Input Container (matching SDDM passInputBox)
