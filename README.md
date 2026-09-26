@@ -63,8 +63,8 @@ cd pavver-plasma-lockscreen
 
 Скрипт автоматично:
 1. Скопіює структуру пакету Look-and-Feel Plasma 6.
-2. Встановить необхідні права доступу (`755`).
-3. Застосує конфігурацію через `kwriteconfig6` для `kscreenlockerrc` та `kdeglobals`.
+2. Встановить права доступу `755` для каталогів і `644` для файлів.
+3. Застосує конфігурацію через `kwriteconfig6` лише для `kscreenlockerrc`.
 
 ---
 
@@ -92,10 +92,13 @@ cd pavver-plasma-lockscreen
 /usr/lib/kscreenlocker_greet --testing
 ```
 
-Або запустити автономний QML-тест:
+Для візуальної перевірки passwordless-панелі та приховування недоступних системних дій запустіть автономне демо:
+
 ```bash
-qml6 contents/lockscreen/LockScreen.qml
+qml6 demo/PasswordlessPreview.qml
 ```
+
+У демо доступні сон і вимкнення, а недоступна дія перезавантаження прихована. Натискання «Розблокувати» лише показує тестове підтвердження і не завершує демо.
 
 ---
 
@@ -105,6 +108,7 @@ qml6 contents/lockscreen/LockScreen.qml
 pavver-plasma-lockscreen/
 ├── metadata.json                 # Декларація Plasma/LookAndFeel пакету (KDE Plasma 6)
 ├── install.sh                    # Інсталятор з автоконфігурацією kscreenlockerrc
+├── demo/PasswordlessPreview.qml  # Автономне прев’ю passwordless-панелі
 ├── preview.png                   # Прев'ю для Системних параметрів KDE
 ├── preview_unlock.png            # Знімок екрана в режимі розблокування
 ├── preview_screensaver.png       # Знімок екрана в режимі скрінсейвера

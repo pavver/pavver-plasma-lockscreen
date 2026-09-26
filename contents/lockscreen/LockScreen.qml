@@ -15,6 +15,8 @@ Item {
     implicitWidth: 800
     implicitHeight: 600
 
+    onClearPassword: lockScreenUi.clearPassword()
+
     LockScreenUi {
         id: lockScreenUi
         anchors.fill: parent

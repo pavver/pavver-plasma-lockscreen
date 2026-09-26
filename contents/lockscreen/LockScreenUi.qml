@@ -31,21 +31,35 @@ Item {
     property bool isScreensaverMode: true
     property bool animationsEnabled: false
     property bool ignoreWakeup: true
+    readonly property bool standaloneDemo: typeof authenticator === "undefined"
+    property bool passwordlessConfirmationVisible: standaloneDemo
+    readonly property var effectiveSessionManagement: standaloneDemo ? demoSessionManagement : sessionManagement
 
     Component.onCompleted: {
+        if (standaloneDemo) {
+            isScreensaverMode = false;
+            ignoreWakeup = false;
+        }
         Qt.callLater(function() {
             lockScreenUi.animationsEnabled = true;
+            if (lockScreenUi.standaloneDemo) {
+                compactLockCard.focusPassword();
+            }
         });
-        if (typeof authenticator !== "undefined" && authenticator && typeof authenticator.startAuthenticating === "function") {
+        if (!standaloneDemo && authenticator && typeof authenticator.startAuthenticating === "function") {
             authenticator.startAuthenticating();
         }
+    }
+
+    function clearPassword() {
+        compactLockCard.clearPassword();
     }
 
     Timer {
         id: screensaverCooldownTimer
         interval: 2500
         repeat: false
-        running: true
+        running: !lockScreenUi.standaloneDemo
         onTriggered: {
             lockScreenUi.ignoreWakeup = false;
         }
@@ -69,7 +83,7 @@ Item {
         id: idleScreensaverTimer
         interval: 20000 // 20 seconds of idle returns to screensaver
         repeat: false
-        running: !lockScreenUi.isScreensaverMode && !compactLockCard.isTyping
+        running: !lockScreenUi.standaloneDemo && !lockScreenUi.isScreensaverMode && !compactLockCard.isTyping
         onTriggered: {
             lockScreenUi.isScreensaverMode = true;
             lockScreenUi.ignoreWakeup = true;
@@ -244,8 +258,18 @@ Item {
                     transformOrigin: Item.TopLeft
                     scale: lockScreenUi.cardScale
 
-                    sessionManagement: sessionManagement
+                    sessionManagement: lockScreenUi.effectiveSessionManagement
                     authenticator: typeof authenticator !== "undefined" ? authenticator : null
+                    passwordlessMode: lockScreenUi.passwordlessConfirmationVisible
+
+                    onPasswordlessUnlockRequested: {
+                        if (lockScreenUi.standaloneDemo) {
+                            compactLockCard.showStatusMessage("Демо: підтвердження спрацювало", "success");
+                            statusMessageClearTimer.restart();
+                        } else {
+                            Qt.quit();
+                        }
+                    }
 
                     onUnlockRequested: function(password) {
                         if (typeof authenticator !== "undefined" && authenticator && typeof authenticator.respond === "function") {
@@ -268,6 +292,16 @@ Item {
     // =========================================================================
     // System Session Management & Plasma Authenticator
     // =========================================================================
+    QtObject {
+        id: demoSessionManagement
+        property bool canSuspend: true
+        property bool canReboot: false
+        property bool canPowerOff: true
+        function suspend() {}
+        function reboot() {}
+        function powerOff() {}
+    }
+
     SessionManagement {
         id: sessionManagement
     }
@@ -327,11 +361,15 @@ Item {
         }
 
         function onSucceeded() {
-            if (typeof authenticator !== "undefined" && authenticator && !authenticator.hadPrompt) {
-                Qt.quit();
-            } else {
+            if (authenticator.hadPrompt) {
                 compactLockCard.onUnlockSucceeded();
                 unlockTimer.start();
+            } else {
+                lockScreenUi.passwordlessConfirmationVisible = true;
+                lockScreenUi.isScreensaverMode = false;
+                Qt.callLater(function() {
+                    compactLockCard.focusPassword();
+                });
             }
         }
 
@@ -356,9 +394,6 @@ Item {
         }
 
         function onPromptForSecretChanged(msg) {
-            if (typeof authenticator !== "undefined" && authenticator && authenticator.promptForSecret) {
-                compactLockCard.setPrompt(authenticator.promptForSecret);
-            }
             compactLockCard.focusPassword();
         }
     }

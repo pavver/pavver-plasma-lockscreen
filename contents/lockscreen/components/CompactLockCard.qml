@@ -31,20 +31,26 @@ Item {
     // Context objects
     property var sessionManagement: null
     property var authenticator: null
+    property bool passwordlessMode: false
 
     // Signals
     signal unlockRequested(string password)
+    signal passwordlessUnlockRequested()
 
     // Helper functions
     function focusPassword() {
-        passwordInput.forceActiveFocus();
+        if (root.passwordlessMode) {
+            passwordlessButton.forceActiveFocus();
+        } else {
+            passwordInput.forceActiveFocus();
+        }
     }
 
     function clearPassword() {
         passwordInput.text = "";
     }
 
-    readonly property bool isTyping: passwordInput.text.length > 0
+    readonly property bool isTyping: !root.passwordlessMode && passwordInput.text.length > 0
 
     // Caps Lock state detection
     KeyboardIndicator.KeyState {
@@ -383,6 +389,7 @@ Item {
                 // Suspend
                 Rectangle {
                     width: 48; height: 48; radius: 24
+                    visible: root.sessionManagement && root.sessionManagement.canSuspend
                     color: suspendMouse.containsMouse ? "#152535" : "#282828"
                     border.color: suspendMouse.containsMouse ? "#00d2ff" : "#3c3c3c"
                     border.width: 1.5
@@ -419,6 +426,7 @@ Item {
                 // Reboot
                 Rectangle {
                     width: 48; height: 48; radius: 24
+                    visible: root.sessionManagement && root.sessionManagement.canReboot
                     color: rebootMouse.containsMouse ? "#251835" : "#282828"
                     border.color: rebootMouse.containsMouse ? "#c77dff" : "#3c3c3c"
                     border.width: 1.5
@@ -455,6 +463,7 @@ Item {
                 // Shutdown
                 Rectangle {
                     width: 48; height: 48; radius: 24
+                    visible: root.sessionManagement && root.sessionManagement.canPowerOff
                     color: powerMouse.containsMouse ? "#381520" : "#282828"
                     border.color: powerMouse.containsMouse ? "#ff4d6d" : "#3c3c3c"
                     border.width: 1.5
@@ -493,7 +502,7 @@ Item {
         // Status & PAM Notification Banner
         Row {
             id: statusRow
-            anchors.bottom: passwordBox.top
+            anchors.bottom: root.passwordlessMode ? passwordlessButton.top : passwordBox.top
             anchors.bottomMargin: 6
             anchors.left: passwordBox.left
             anchors.right: passwordBox.right
@@ -528,9 +537,62 @@ Item {
             }
         }
 
+        // Explicit confirmation required when authentication succeeds without a prompt.
+        Rectangle {
+            id: passwordlessButton
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: 56
+            radius: 12
+            visible: root.passwordlessMode
+            activeFocusOnTab: true
+            color: passwordlessMouse.containsMouse || activeFocus ? "#10303a" : "#161616"
+            border.color: passwordlessMouse.containsMouse || activeFocus ? "#00e5ff" : "#00b4d8"
+            border.width: passwordlessMouse.containsMouse || activeFocus ? 2 : 1.5
+
+            Behavior on color { ColorAnimation { duration: 150 } }
+            Behavior on border.color { ColorAnimation { duration: 150 } }
+
+            Row {
+                anchors.centerIn: parent
+                spacing: 10
+
+                Kirigami.Icon {
+                    width: 24
+                    height: 24
+                    source: "unlock"
+                    color: "#00d2ff"
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+                Text {
+                    text: "Розблокувати"
+                    color: "#ffffff"
+                    font.family: root.mainFontFamily
+                    font.pixelSize: 18
+                    font.bold: true
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+
+            MouseArea {
+                id: passwordlessMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.passwordlessUnlockRequested()
+            }
+
+            Keys.onEnterPressed: root.passwordlessUnlockRequested()
+            Keys.onReturnPressed: root.passwordlessUnlockRequested()
+            Keys.onSpacePressed: root.passwordlessUnlockRequested()
+        }
+
         // Password Input Container (matching SDDM passInputBox)
         Rectangle {
             id: passwordBox
+            visible: !root.passwordlessMode
             anchors.bottom: parent.bottom
             anchors.bottomMargin: 0
             anchors.left: parent.left
