@@ -504,7 +504,7 @@ Item {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             if (root.sessionManagement && root.sessionManagement.canReboot) {
-                                root.sessionManagement.reboot();
+                                root.sessionManagement.requestReboot();
                             }
                         }
                     }
@@ -517,7 +517,7 @@ Item {
                 // Shutdown
                 Rectangle {
                     width: 48; height: 48; radius: 24
-                    visible: root.sessionManagement && root.sessionManagement.canPowerOff
+                    visible: root.sessionManagement && root.sessionManagement.canShutdown
                     color: powerMouse.containsMouse ? "#381520" : "#282828"
                     border.color: powerMouse.containsMouse ? "#ff4d6d" : "#3c3c3c"
                     border.width: 1.5
@@ -540,8 +540,8 @@ Item {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            if (root.sessionManagement && root.sessionManagement.canPowerOff) {
-                                root.sessionManagement.powerOff();
+                            if (root.sessionManagement && root.sessionManagement.canShutdown) {
+                                root.sessionManagement.requestShutdown();
                             }
                         }
                     }

@@ -320,10 +320,10 @@ Item {
         id: demoSessionManagement
         property bool canSuspend: true
         property bool canReboot: false
-        property bool canPowerOff: true
+        property bool canShutdown: true
         function suspend() {}
-        function reboot() {}
-        function powerOff() {}
+        function requestReboot() {}
+        function requestShutdown() {}
     }
 
     SessionManagement {
