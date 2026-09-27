@@ -18,7 +18,8 @@
 
 - **⚡ Плавний вихід з режиму скрінсейвера (Fluid Wake-up)**:
   - Будь-який рух мишкою, клік або натискання будь-якої клавіші активує режим розблокування.
-  - Синхронізована 550мс кінематика (`Easing.OutCubic`): банер плавно повертається у верхню частину екрана, годинник і картка піднімаються знизу на свої позиції, а поле пароля автоматично отримує фокус.
+  - Перша клавіша лише вимикає скрінсейвер і не передається прихованому полю пароля.
+  - Синхронізована 550мс кінематика (`Easing.OutCubic`): банер плавно повертається у верхню частину екрана, годинник і картка піднімаються знизу на свої позиції, а поле пароля автоматично отримує фокус для подальшого введення без миші.
 
 - **🎨 100% відповідність дизайн-системі SDDM**:
   - Точна піксельна відповідність темі входу [`pavver-sddm-theme`](https://github.com/pavver/pavver-sddm-theme).
@@ -36,7 +37,7 @@
   - Вбудована компактна віртуальна клавіатура з EN/UA розкладками, яку можна переміщувати та змінювати за розміром.
 
 - **💡 Тактильний фідбек автентифікації**:
-  - **Успішне розблокування**: неоново-зелена пульсація контуру поля введення (`#00e676`) та миттєве розблокування (`Qt.quit()`) без зайвих лоадерів чи затримок.
+  - **Успішне розблокування**: неоново-зелена пульсація контуру поля введення (`#00e676`) та завершення після короткої 500мс анімації.
   - **Помилка пароля**: повторне надсилання тимчасово блокується, а через дві секунди поле очищується та знову отримує фокус.
 
 - **⚠ Індикатор Caps Lock**:
@@ -60,28 +61,30 @@ cd pavver-plasma-lockscreen
 ./install.sh
 ```
 
-> **Порада**: Якщо запустити без `sudo`, тема встановиться для поточного користувача (`~/.local/share/plasma/look-and-feel/pavver-plasma-lockscreen`). Якщо запустити з `sudo ./install.sh`, тема встановиться системно (`/usr/share/plasma/look-and-feel/pavver-plasma-lockscreen`).
+> **Порада**: запускайте інсталятор без `sudo`, щоб встановити тему для поточного користувача у `~/.local/share/plasma/shells/pavver-plasma-lockscreen`. Запуск через `sudo ./install.sh` встановлює пакет системно у `/usr/share/plasma/shells/pavver-plasma-lockscreen`, але активувати його потрібно в конфігурації потрібного користувача.
 
 Скрипт автоматично:
-1. Скопіює структуру пакету Look-and-Feel Plasma 6.
+1. Встановить мінімальний пакет `Plasma/Shell`, який замінює екран блокування.
 2. Встановить права доступу `755` для каталогів і `644` для файлів.
-3. Застосує конфігурацію через `kwriteconfig6` лише для `kscreenlockerrc`.
+3. Активує пакет через `plasmashellrc → [Shell] ShellPackage`.
+4. Видалить застарілу копію цієї теми з каталогу `plasma/look-and-feel` та старий ключ `kscreenlockerrc`, якщо вони існують.
 
 ---
 
 ### Ручне встановлення
 
-1. Скопіюйте директорію теми до каталогу Look-and-Feel вашого користувача:
+1. Скопіюйте пакет до каталогу Plasma Shell поточного користувача:
    ```bash
-   mkdir -p ~/.local/share/plasma/look-and-feel/pavver-plasma-lockscreen
-   cp -rf metadata.json contents ~/.local/share/plasma/look-and-feel/pavver-plasma-lockscreen/
+   mkdir -p ~/.local/share/plasma/shells/pavver-plasma-lockscreen
+   cp -a metadata.json contents ~/.local/share/plasma/shells/pavver-plasma-lockscreen/
    ```
 
-2. Увімкніть тему блокування в налаштуваннях:
+2. Активуйте shell-пакет:
    ```bash
-   kwriteconfig6 --file kscreenlockerrc --group Greeter --key Theme pavver-plasma-lockscreen
+   kwriteconfig6 --file plasmashellrc --group Shell --key ShellPackage pavver-plasma-lockscreen --notify
    ```
-   *Або оберіть тему вручну в:* **Системні параметри KDE → Блокування екрана (Screen Locking) → Зовнішній вигляд**.
+
+Окремий екран блокування у Plasma 6.7 завантажується зі shell-пакета, тому ця тема не з'являється як самостійний пункт Look-and-Feel у Системних параметрах.
 
 ---
 
@@ -90,7 +93,7 @@ cd pavver-plasma-lockscreen
 Ви можете протестувати екран блокування без блокування робочого сеансу за допомогою вбудованої утиліти KDE:
 
 ```bash
-/usr/lib/kscreenlocker_greet --testing
+/usr/lib/kscreenlocker_greet --testing --shell pavver-plasma-lockscreen
 ```
 
 Для візуальної перевірки passwordless-панелі та приховування недоступних системних дій запустіть автономне демо:
@@ -113,11 +116,11 @@ qml6 demo/PasswordlessPreview.qml
 
 ```
 pavver-plasma-lockscreen/
-├── metadata.json                 # Декларація Plasma/LookAndFeel пакету (KDE Plasma 6)
-├── install.sh                    # Інсталятор з автоконфігурацією kscreenlockerrc
+├── metadata.json                 # Декларація мінімального пакета Plasma/Shell
+├── install.sh                    # Інсталятор і активація через plasmashellrc
 ├── demo/Preview.qml              # Автономне прев’ю пароля та віртуальної клавіатури
 ├── demo/PasswordlessPreview.qml  # Автономне прев’ю passwordless-панелі
-├── preview.png                   # Прев'ю для Системних параметрів KDE
+├── preview.png                   # Основне прев'ю теми
 ├── preview_unlock.png            # Знімок екрана в режимі розблокування
 ├── preview_screensaver.png       # Знімок екрана в режимі скрінсейвера
 ├── preview_capslock.png          # Знімок екрана з активним індикатором Caps Lock
